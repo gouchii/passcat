@@ -161,3 +161,8 @@ cython_debug/
 
 # Flet
 storage/
+
+
+# Secrets
+passwords.db
+secret.key
