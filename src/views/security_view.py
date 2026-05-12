@@ -21,7 +21,6 @@ class SecurityView:
             size=12,
         )
 
-        # Swapped ft.Text for an invisible ft.TextField to allow live editing
         self.current_password = ft.TextField(
             value="",
             text_size=22,
@@ -31,7 +30,7 @@ class SecurityView:
                 font_family="Consolas",
             ),
             border=ft.InputBorder.NONE,
-            bgcolor=ft.colors.TRANSPARENT,
+            bgcolor=ft.Colors.TRANSPARENT,
             content_padding=0,
             cursor_color=colors.primary,
             on_change=self.on_password_edit,
@@ -49,7 +48,7 @@ class SecurityView:
         )
 
         self.length_value_text = ft.Text(
-            "0",
+            "12",
             size=18,
             color=colors.primary,
             weight=ft.FontWeight.BOLD,
@@ -72,7 +71,7 @@ class SecurityView:
             min=0,
             max=64,
             divisions=56,
-            value=3,
+            value=12,
             active_color=colors.primary,
             inactive_color=colors.surface_highest,
         )
@@ -230,7 +229,6 @@ class SecurityView:
         await self.clipboard.set(value)
         self.snack("Copied to clipboard.")
 
-    # Added Live Editing Event Handler
     def on_password_edit(self, e) -> None:
         pwd = self.current_password.value
 
@@ -244,12 +242,10 @@ class SecurityView:
             return
 
         try:
-            # Perform local analysis without triggering external breach APIs
             self.analysis = analyze_password(pwd)
             self.update_analysis_ui()
             self.update_strength_ui()
 
-            # Inform user that live breach checks are paused
             self.breach_text.value = (
                 "Manual edit detected. Click refresh to check breaches."
             )
@@ -289,7 +285,7 @@ class SecurityView:
                 bar.bgcolor = self.colors.surface_highest
 
     def sync_length(self, e=None) -> None:
-        self.length_value_text.value = str(int(self.length_slider.value or 20))
+        self.length_value_text.value = str(int(self.length_slider.value or 0))
         self.page.update()
 
     def update_analysis_ui(self) -> None:
@@ -348,6 +344,7 @@ class SecurityView:
                 if pattern_name and pattern_name != "bruteforce":
                     meaningful_patterns.append(pattern_name)
 
+        primary_pattern = ""
         if not meaningful_patterns:
             self.pattern_text.value = "High Entropy"
             self.pattern_desc.value = (
@@ -365,17 +362,25 @@ class SecurityView:
         warning = feedback.get("warning", "")
 
         if isinstance(suggestions, list) and suggestions:
-            sugg_str = " ".join(suggestions)
+            self.suggestions_text.value = " ".join(suggestions)
         elif isinstance(suggestions, str) and suggestions:
-            sugg_str = suggestions
+            self.suggestions_text.value = suggestions
         else:
-            sugg_str = "Password is near optimal. Consider using a password manager to store it safely."
+            self.suggestions_text.value = "Password is near optimal. Consider using a password manager to store it safely."
 
-        self.feedback_text.value = warning if warning else "No major issues detected."
-        self.suggestions_text.value = sugg_str
-        self.vulnerabilities_text.value = (
-            warning if warning else "No specific vulnerabilities detected."
-        )
+        if warning:
+            self.vulnerabilities_text.value = warning
+        elif meaningful_patterns:
+            self.vulnerabilities_text.value = f"Structure is potentially vulnerable to targeted {primary_pattern} attacks."
+        else:
+            self.vulnerabilities_text.value = "No specific vulnerabilities detected. Immune to standard dictionary attacks."
+
+        if score >= 3:
+            self.feedback_text.value = "Excellent character diversity. Length and entropy provide a massive key space."
+        elif score == 2:
+            self.feedback_text.value = "Moderate strength. Consider increasing length or adding special characters."
+        else:
+            self.feedback_text.value = "Weak structure. Highly recommended to use a longer phrase or more random characters."
 
     def sync_minimum_constraints(self) -> None:
         uppercase_required = 1 if self.uppercase_switch.value else 0
@@ -541,7 +546,7 @@ class SecurityView:
                             controls=[
                                 ft.Container(
                                     expand=True,
-                                    content=self.current_password,  # Now an interactive TextField
+                                    content=self.current_password,
                                 ),
                                 ft.Row(
                                     controls=[
@@ -726,11 +731,14 @@ class SecurityView:
                                         vertical_alignment=ft.CrossAxisAlignment.END,
                                         controls=[
                                             self.score_text,
-                                            ft.Text(
-                                                "/ 100",
-                                                color=self.colors.muted,
-                                                size=14,
-                                                weight=ft.FontWeight.W_500,
+                                            ft.Container(
+                                                padding=ft.Padding.only(bottom=8),
+                                                content=ft.Text(
+                                                    "/ 100",
+                                                    color=self.colors.muted,
+                                                    size=14,
+                                                    weight=ft.FontWeight.W_500,
+                                                ),
                                             ),
                                         ],
                                     ),
@@ -820,32 +828,6 @@ class SecurityView:
                         content=ft.Column(
                             spacing=24,
                             controls=[
-                                ft.Column(
-                                    spacing=8,
-                                    controls=[
-                                        ft.Row(
-                                            spacing=12,
-                                            controls=[
-                                                ft.Icon(
-                                                    ft.Icons.BUILD_CIRCLE,
-                                                    color=self.colors.primary,
-                                                    size=36,
-                                                ),
-                                                ft.Text(
-                                                    "Password Forge",
-                                                    size=32,
-                                                    weight=ft.FontWeight.BOLD,
-                                                    color=self.colors.text,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Text(
-                                            "Craft exceptionally strong, mathematically secure keys for your digital safe. Adjust the complexity below to fit your needs.",
-                                            color=self.colors.muted,
-                                            size=16,
-                                        ),
-                                    ],
-                                ),
                                 hero_card,
                                 ft.ResponsiveRow(
                                     controls=[
