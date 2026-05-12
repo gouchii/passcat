@@ -304,22 +304,30 @@ class SecurityView:
             crack_times.get("offline_slow_hashing_1e4_per_second", "--")
         )
 
-        seq = self.analysis.get("sequence", "")
-        if isinstance(seq, list) and len(seq) > 0:
-            raw_pattern = (
-                str(seq[0].get("pattern", "None"))
-                if isinstance(seq[0], dict)
-                else str(seq[0])
+        seq = self.analysis.get("sequence", [])
+
+
+        meaningful_patterns = []
+        if isinstance(seq, list):
+            for item in seq:
+                pattern_name = (
+                    item.get("pattern", "") if isinstance(item, dict) else str(item)
+                )
+                if pattern_name and pattern_name != "bruteforce":
+                    meaningful_patterns.append(pattern_name)
+
+
+        if not meaningful_patterns:
+            self.pattern_text.value = "High Entropy"
+            self.pattern_desc.value = (
+                "No sequential patterns or dictionary words detected."
             )
         else:
-            raw_pattern = str(seq) if seq else "High Entropy"
-
-        self.pattern_text.value = raw_pattern.replace("_", " ").title()
-
-        if not seq or seq == "None" or seq == []:
-            self.pattern_desc.value = "No sequential patterns or dates detected."
-        else:
-            self.pattern_desc.value = "Patterns detected in the password structure."
+            primary_pattern = meaningful_patterns[0].replace("_", " ")
+            self.pattern_text.value = primary_pattern.title()
+            self.pattern_desc.value = (
+                f"Detected {primary_pattern} patterns in the structure."
+            )
 
         feedback = self.analysis.get("feedback", {})
         suggestions = feedback.get("suggestions", [])
