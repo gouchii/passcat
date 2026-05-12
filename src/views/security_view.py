@@ -2,10 +2,8 @@ import flet as ft
 
 from breach_checker import is_pwned
 from generator import generate_password
-from storage import retrieve_passwords, save_password
 from validator import check_strength
 
-from components.password_tile import password_tile
 from components.section_title import section_title
 from components.toggle_row import toggle_row
 from core.theme import Palette
@@ -303,71 +301,6 @@ class SecurityView:
 
         await self.copy_text(self.current_password.value)
 
-    def save_current_password(self, e) -> None:
-        if not (
-            self.service_input.value
-            and self.username_input.value
-            and self.save_pwd_input.value
-        ):
-            self.set_status(
-                "Fill service, username, and password first.",
-                self.colors.warn,
-            )
-
-            self.page.update()
-            return
-
-        save_password(
-            self.service_input.value,
-            self.username_input.value,
-            self.save_pwd_input.value,
-        )
-
-        self.service_input.value = ""
-        self.username_input.value = ""
-        self.save_pwd_input.value = ""
-
-        self.load_saved_passwords()
-
-        self.set_status(
-            "Password saved to vault.",
-            self.colors.primary,
-        )
-
-        self.page.update()
-
-    def load_saved_passwords(self) -> None:
-        self.saved_list.controls.clear()
-
-        records = retrieve_passwords() or []
-
-        if not records:
-            self.saved_list.controls.append(
-                ft.Text(
-                    "No saved passwords found.",
-                    color=ft.Colors.GREY_400,
-                )
-            )
-
-            self.page.update()
-            return
-
-        for item in records:
-
-            async def on_copy(e, pwd=item["password"]):
-                await self.copy_text(pwd)
-
-            self.saved_list.controls.append(
-                password_tile(
-                    item["service"],
-                    item["username"],
-                    on_copy,
-                    self.colors,
-                )
-            )
-
-        self.page.update()
-
     def build(self) -> ft.Container:
         hero_card = ft.Container(
             bgcolor=self.colors.surface,
@@ -558,45 +491,6 @@ class SecurityView:
                         self.symbol_switch,
                         self.colors,
                     ),
-                ],
-            ),
-        )
-
-        vault_panel = ft.Container(
-            bgcolor=self.colors.surface,
-            border_radius=20,
-            border=ft.Border.all(1, self.colors.outline),
-            padding=20,
-            content=ft.Column(
-                spacing=14,
-                controls=[
-                    section_title(
-                        "Vault",
-                        ft.Icons.LOCK,
-                        self.colors,
-                    ),
-                    self.service_input,
-                    self.username_input,
-                    self.save_pwd_input,
-                    ft.Row(
-                        controls=[
-                            ft.Button(
-                                content="Save Password",
-                                icon=ft.Icons.SAVE,
-                                bgcolor=self.colors.primary,
-                                color=self.colors.on_primary_container,
-                                on_click=self.save_current_password,
-                            ),
-                            ft.Button(
-                                content="Regenerate",
-                                icon=ft.Icons.AUTORENEW,
-                                bgcolor=self.colors.surface_high,
-                                color=self.colors.text,
-                                on_click=self.generate_password_ui,
-                            ),
-                        ]
-                    ),
-                    self.saved_list,
                 ],
             ),
         )
@@ -964,7 +858,6 @@ class SecurityView:
                                         analysis_panel
                                     ]
                                 ),
-                                vault_panel,
                                 self.status_text,
                             ],
                         ),
@@ -976,4 +869,3 @@ class SecurityView:
     def refresh(self) -> None:
         self.sync_length()
         self.generate_password_ui()
-        self.load_saved_passwords()
