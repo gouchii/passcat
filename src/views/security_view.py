@@ -55,27 +55,6 @@ class SecurityView:
             border_color=colors.outline,
         )
 
-        self.username_input = ft.TextField(
-            label="Username / Email",
-            border_radius=12,
-            bgcolor=colors.surface_high,
-            border_color=colors.outline,
-        )
-
-        self.save_pwd_input = ft.TextField(
-            label="Password",
-            password=True,
-            can_reveal_password=True,
-            border_radius=12,
-            bgcolor=colors.surface_high,
-            border_color=colors.outline,
-        )
-
-        self.saved_list = ft.ListView(
-            expand=True,
-            spacing=10,
-        )
-
         self.uppercase_switch = ft.Switch(value=True)
         self.lowercase_switch = ft.Switch(value=True)
         self.number_switch = ft.Switch(value=True)
@@ -252,10 +231,11 @@ class SecurityView:
                 self.lowercase_switch.value,
                 self.number_switch.value,
                 self.symbol_switch.value,
+                int(self.min_numbers_slider.value or 20),
+                int(self.min_symbols_slider.value or 20),
             )
 
             self.current_password.value = pwd
-            self.save_pwd_input.value = pwd
 
             strength = check_strength(pwd)
             self.update_strength_ui(strength)
@@ -283,7 +263,6 @@ class SecurityView:
             self.set_status(str(ex), self.colors.error)
 
             self.current_password.value = ""
-            self.save_pwd_input.value = ""
             self.strength_badge.value = ""
             self.breach_text.value = ""
 
