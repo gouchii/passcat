@@ -21,13 +21,20 @@ class SecurityView:
             size=12,
         )
 
-        self.current_password = ft.Text(
+        # Swapped ft.Text for an invisible ft.TextField to allow live editing
+        self.current_password = ft.TextField(
             value="",
-            size=22,
-            weight=ft.FontWeight.BOLD,
+            text_size=22,
             color=colors.primary,
-            font_family="Consolas",
-            selectable=True,
+            text_style=ft.TextStyle(
+                weight=ft.FontWeight.BOLD,
+                font_family="Consolas",
+            ),
+            border=ft.InputBorder.NONE,
+            bgcolor=ft.colors.TRANSPARENT,
+            content_padding=0,
+            cursor_color=colors.primary,
+            on_change=self.on_password_edit,
         )
 
         self.strength_badge = ft.Text(
@@ -42,7 +49,7 @@ class SecurityView:
         )
 
         self.length_value_text = ft.Text(
-            "20",
+            "0",
             size=18,
             color=colors.primary,
             weight=ft.FontWeight.BOLD,
@@ -62,10 +69,10 @@ class SecurityView:
         self.phrase_switch = ft.Switch(value=False)
 
         self.length_slider = ft.Slider(
-            min=8,
+            min=0,
             max=64,
             divisions=56,
-            value=20,
+            value=3,
             active_color=colors.primary,
             inactive_color=colors.surface_highest,
         )
@@ -101,7 +108,6 @@ class SecurityView:
             inactive_color=colors.surface_highest,
         )
 
-
         self.meter_bars = [
             ft.Container(
                 expand=True, bgcolor=colors.surface_highest, border_radius=4, height=6
@@ -121,7 +127,6 @@ class SecurityView:
         ]
 
         self.strength_meter = ft.Row(spacing=4, controls=self.meter_bars)
-
 
         self.score_text = ft.Text(
             "--", size=48, weight=ft.FontWeight.BOLD, color=colors.primary
@@ -225,6 +230,37 @@ class SecurityView:
         await self.clipboard.set(value)
         self.snack("Copied to clipboard.")
 
+    # Added Live Editing Event Handler
+    def on_password_edit(self, e) -> None:
+        pwd = self.current_password.value
+
+        if not pwd:
+            self.analysis = None
+            self.update_analysis_ui()
+            self.update_strength_ui()
+            self.breach_text.value = ""
+            self.set_status("Awaiting input.", self.colors.muted)
+            self.page.update()
+            return
+
+        try:
+            # Perform local analysis without triggering external breach APIs
+            self.analysis = analyze_password(pwd)
+            self.update_analysis_ui()
+            self.update_strength_ui()
+
+            # Inform user that live breach checks are paused
+            self.breach_text.value = (
+                "Manual edit detected. Click refresh to check breaches."
+            )
+            self.breach_text.color = self.colors.muted
+
+            self.set_status("Live analysis updated.", self.colors.primary)
+        except Exception as ex:
+            self.set_status(str(ex), self.colors.error)
+
+        self.page.update()
+
     def update_strength_ui(self) -> None:
         if not self.analysis:
             self.strength_badge.value = "Unknown Strength"
@@ -235,14 +271,12 @@ class SecurityView:
 
         score = self.analysis.get("score", 0)
 
-
         if score <= 1:
             color = self.colors.error
         elif score == 2:
             color = self.colors.warn
         else:
             color = self.colors.primary
-
 
         self.strength_badge.value = f"{self.score_label.value} Strength"
         self.strength_badge.color = color
@@ -285,7 +319,6 @@ class SecurityView:
         }
         self.score_label.value = labels.get(score, "Unknown")
 
-
         if score <= 1:
             score_color = self.colors.error
         elif score == 2:
@@ -306,7 +339,6 @@ class SecurityView:
 
         seq = self.analysis.get("sequence", [])
 
-
         meaningful_patterns = []
         if isinstance(seq, list):
             for item in seq:
@@ -315,7 +347,6 @@ class SecurityView:
                 )
                 if pattern_name and pattern_name != "bruteforce":
                     meaningful_patterns.append(pattern_name)
-
 
         if not meaningful_patterns:
             self.pattern_text.value = "High Entropy"
@@ -390,7 +421,6 @@ class SecurityView:
             )
 
             self.current_password.value = pwd
-
 
             self.analysis = analyze_password(pwd)
 
@@ -511,7 +541,7 @@ class SecurityView:
                             controls=[
                                 ft.Container(
                                     expand=True,
-                                    content=self.current_password,
+                                    content=self.current_password,  # Now an interactive TextField
                                 ),
                                 ft.Row(
                                     controls=[
@@ -686,7 +716,6 @@ class SecurityView:
                         run_spacing=20,
                         spacing=20,
                         controls=[
-
                             self._build_analysis_card(
                                 "Overall Score",
                                 ft.Icons.VERIFIED,
@@ -708,7 +737,6 @@ class SecurityView:
                                     self.score_label,
                                 ],
                             ),
-
                             self._build_analysis_card(
                                 "Crack Time",
                                 ft.Icons.TIMER,
@@ -738,7 +766,6 @@ class SecurityView:
                                     ),
                                 ],
                             ),
-
                             self._build_analysis_card(
                                 "Pattern Analysis",
                                 ft.Icons.AUTO_GRAPH,
@@ -759,21 +786,18 @@ class SecurityView:
                                     self.pattern_desc,
                                 ],
                             ),
-
                             self._build_analysis_card(
                                 "Feedback",
                                 ft.Icons.INFO_OUTLINE,
                                 self.colors.primary,
                                 [self.feedback_text],
                             ),
-
                             self._build_analysis_card(
                                 "Suggestions",
                                 ft.Icons.LIGHTBULB_OUTLINE,
                                 self.colors.secondary_container,
                                 [self.suggestions_text],
                             ),
-
                             self._build_analysis_card(
                                 "Vulnerabilities",
                                 ft.Icons.SHIELD_OUTLINED,
