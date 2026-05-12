@@ -106,9 +106,9 @@ class SecurityView:
 
         self.number_switch.on_change = self.sync_number_toggle
         self.symbol_switch.on_change = self.sync_symbol_toggle
-        
+
         self.length_slider.on_change = self.sync_length
-            
+
     def sync_numbers(self, e=None) -> None:
 
         value = int(self.min_numbers_slider.value or 0)
@@ -186,7 +186,7 @@ class SecurityView:
     def sync_length(self, e=None) -> None:
         self.length_value_text.value = str(int(self.length_slider.value or 20))
         self.page.update()
-        
+
     def sync_minimum_constraints(self) -> None:
 
         uppercase_required = 1 if self.uppercase_switch.value else 0
@@ -334,12 +334,6 @@ class SecurityView:
                                         ),
                                         ft.IconButton(
                                             icon=ft.Icons.AUTORENEW,
-                                            icon_color=self.colors.on_primary_container,
-                                            bgcolor=self.colors.primary,
-                                            on_click=self.generate_password_ui,
-                                        ),
-                                        ft.IconButton(
-                                            icon=ft.Icons.TASK_ALT,
                                             icon_color=self.colors.on_primary_container,
                                             bgcolor=self.colors.primary,
                                             on_click=self.generate_password_ui,
@@ -834,7 +828,7 @@ class SecurityView:
                                     controls=[
                                         parameters_panel,
                                         ingredients_panel,
-                                        analysis_panel
+                                        analysis_panel,
                                     ]
                                 ),
                                 self.status_text,
