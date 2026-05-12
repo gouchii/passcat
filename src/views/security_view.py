@@ -2,7 +2,7 @@ import flet as ft
 
 from breach_checker import is_pwned
 from generator import generate_password
-from validator import check_strength
+from validator import analyze_password
 
 from components.section_title import section_title
 from components.toggle_row import toggle_row
@@ -14,7 +14,7 @@ class SecurityView:
         self.page = page
         self.colors = colors
         self.clipboard = ft.Clipboard()
-
+        self.analysis = None
         self.status_text = ft.Text(
             value="",
             color=colors.muted,
@@ -33,7 +33,7 @@ class SecurityView:
         self.strength_badge = ft.Text(
             color=colors.primary,
             weight=ft.FontWeight.BOLD,
-            size=13,
+            size=14,
         )
 
         self.breach_text = ft.Text(
@@ -101,6 +101,73 @@ class SecurityView:
             inactive_color=colors.surface_highest,
         )
 
+
+        self.meter_bars = [
+            ft.Container(
+                expand=True, bgcolor=colors.surface_highest, border_radius=4, height=6
+            ),
+            ft.Container(
+                expand=True, bgcolor=colors.surface_highest, border_radius=4, height=6
+            ),
+            ft.Container(
+                expand=True, bgcolor=colors.surface_highest, border_radius=4, height=6
+            ),
+            ft.Container(
+                expand=True, bgcolor=colors.surface_highest, border_radius=4, height=6
+            ),
+            ft.Container(
+                expand=True, bgcolor=colors.surface_highest, border_radius=4, height=6
+            ),
+        ]
+
+        self.strength_meter = ft.Row(spacing=4, controls=self.meter_bars)
+
+
+        self.score_text = ft.Text(
+            "--", size=48, weight=ft.FontWeight.BOLD, color=colors.primary
+        )
+        self.score_label = ft.Text(
+            "Unknown", color=colors.primary, weight=ft.FontWeight.W_500, size=14
+        )
+        self.crack_time_bf = ft.Text(
+            "--", color=colors.text, weight=ft.FontWeight.W_500, size=14
+        )
+        self.crack_time_dict = ft.Text(
+            "--", color=colors.text, weight=ft.FontWeight.W_500, size=14
+        )
+        self.pattern_text = ft.Text(
+            "--", color=colors.text, weight=ft.FontWeight.W_500, size=14
+        )
+
+        self.pattern_desc = ft.Text(
+            "Awaiting analysis...",
+            color=colors.muted,
+            size=14,
+            max_lines=4,
+            overflow=ft.TextOverflow.ELLIPSIS,
+        )
+        self.feedback_text = ft.Text(
+            "--",
+            color=colors.muted,
+            size=14,
+            max_lines=4,
+            overflow=ft.TextOverflow.ELLIPSIS,
+        )
+        self.suggestions_text = ft.Text(
+            "--",
+            color=colors.muted,
+            size=14,
+            max_lines=4,
+            overflow=ft.TextOverflow.ELLIPSIS,
+        )
+        self.vulnerabilities_text = ft.Text(
+            "--",
+            color=colors.muted,
+            size=14,
+            max_lines=4,
+            overflow=ft.TextOverflow.ELLIPSIS,
+        )
+
         self.min_numbers_slider.on_change = self.sync_numbers
         self.min_symbols_slider.on_change = self.sync_symbols
 
@@ -110,47 +177,35 @@ class SecurityView:
         self.length_slider.on_change = self.sync_length
 
     def sync_numbers(self, e=None) -> None:
-
         value = int(self.min_numbers_slider.value or 0)
-
         self.min_numbers_value_text.value = str(value)
-
         self.number_switch.value = value > 0
         self.sync_minimum_constraints()
         self.page.update()
 
     def sync_symbols(self, e=None) -> None:
-
         value = int(self.min_symbols_slider.value or 0)
-
         self.min_symbols_value_text.value = str(value)
-
         self.symbol_switch.value = value > 0
         self.sync_minimum_constraints()
         self.page.update()
 
     def sync_number_toggle(self, e=None) -> None:
-
         if not self.number_switch.value:
             self.min_numbers_slider.value = 0
             self.min_numbers_value_text.value = "0"
-
         elif self.min_numbers_slider.value == 0:
             self.min_numbers_slider.value = 1
             self.min_numbers_value_text.value = "1"
-
         self.page.update()
 
     def sync_symbol_toggle(self, e=None) -> None:
-
         if not self.symbol_switch.value:
             self.min_symbols_slider.value = 0
             self.min_symbols_value_text.value = "0"
-
         elif self.min_symbols_slider.value == 0:
             self.min_symbols_slider.value = 1
             self.min_symbols_value_text.value = "1"
-
         self.page.update()
 
     def snack(self, message: str) -> None:
@@ -161,7 +216,6 @@ class SecurityView:
             )
         )
         self.page.update()
-        self.page.update()
 
     def set_status(self, message: str, color: str | None = None) -> None:
         self.status_text.value = message
@@ -171,39 +225,132 @@ class SecurityView:
         await self.clipboard.set(value)
         self.snack("Copied to clipboard.")
 
-    def update_strength_ui(self, strength: str) -> None:
-        self.strength_badge.value = f"{strength} Strength"
+    def update_strength_ui(self) -> None:
+        if not self.analysis:
+            self.strength_badge.value = "Unknown Strength"
+            self.strength_badge.color = self.colors.muted
+            for bar in self.meter_bars:
+                bar.bgcolor = self.colors.surface_highest
+            return
 
-        if strength == "Strong":
-            self.strength_badge.color = self.colors.primary
+        score = self.analysis.get("score", 0)
 
-        elif strength == "Medium":
-            self.strength_badge.color = self.colors.warn
 
+        if score <= 1:
+            color = self.colors.error
+        elif score == 2:
+            color = self.colors.warn
         else:
-            self.strength_badge.color = self.colors.error
+            color = self.colors.primary
+
+
+        self.strength_badge.value = f"{self.score_label.value} Strength"
+        self.strength_badge.color = color
+
+        active_bars = score + 1
+        for i, bar in enumerate(self.meter_bars):
+            if i < active_bars:
+                bar.bgcolor = color
+            else:
+                bar.bgcolor = self.colors.surface_highest
 
     def sync_length(self, e=None) -> None:
         self.length_value_text.value = str(int(self.length_slider.value or 20))
         self.page.update()
 
+    def update_analysis_ui(self) -> None:
+        if not self.analysis:
+            self.score_text.value = "--"
+            self.score_label.value = "Unknown"
+            self.score_text.color = self.colors.primary
+            self.score_label.color = self.colors.primary
+            self.crack_time_bf.value = "--"
+            self.crack_time_dict.value = "--"
+            self.pattern_text.value = "--"
+            self.pattern_desc.value = "Awaiting analysis..."
+            self.feedback_text.value = "--"
+            self.suggestions_text.value = "--"
+            self.vulnerabilities_text.value = "--"
+            return
+
+        score = self.analysis.get("score", 0)
+        self.score_text.value = str(score * 25)
+
+        labels = {
+            0: "Very Weak",
+            1: "Weak",
+            2: "Fair",
+            3: "Strong",
+            4: "Extremely Strong",
+        }
+        self.score_label.value = labels.get(score, "Unknown")
+
+
+        if score <= 1:
+            score_color = self.colors.error
+        elif score == 2:
+            score_color = self.colors.warn
+        else:
+            score_color = self.colors.primary
+
+        self.score_text.color = score_color
+        self.score_label.color = score_color
+
+        crack_times = self.analysis.get("crack_times", {})
+        self.crack_time_bf.value = str(
+            crack_times.get("offline_fast_hashing_1e10_per_second", "--")
+        )
+        self.crack_time_dict.value = str(
+            crack_times.get("offline_slow_hashing_1e4_per_second", "--")
+        )
+
+        seq = self.analysis.get("sequence", "")
+        if isinstance(seq, list) and len(seq) > 0:
+            raw_pattern = (
+                str(seq[0].get("pattern", "None"))
+                if isinstance(seq[0], dict)
+                else str(seq[0])
+            )
+        else:
+            raw_pattern = str(seq) if seq else "High Entropy"
+
+        self.pattern_text.value = raw_pattern.replace("_", " ").title()
+
+        if not seq or seq == "None" or seq == []:
+            self.pattern_desc.value = "No sequential patterns or dates detected."
+        else:
+            self.pattern_desc.value = "Patterns detected in the password structure."
+
+        feedback = self.analysis.get("feedback", {})
+        suggestions = feedback.get("suggestions", [])
+        warning = feedback.get("warning", "")
+
+        if isinstance(suggestions, list) and suggestions:
+            sugg_str = " ".join(suggestions)
+        elif isinstance(suggestions, str) and suggestions:
+            sugg_str = suggestions
+        else:
+            sugg_str = "Password is near optimal. Consider using a password manager to store it safely."
+
+        self.feedback_text.value = warning if warning else "No major issues detected."
+        self.suggestions_text.value = sugg_str
+        self.vulnerabilities_text.value = (
+            warning if warning else "No specific vulnerabilities detected."
+        )
+
     def sync_minimum_constraints(self) -> None:
-
         uppercase_required = 1 if self.uppercase_switch.value else 0
-
         lowercase_required = 1 if self.lowercase_switch.value else 0
 
         numbers_required = (
             int(self.min_numbers_slider.value or 0) if self.number_switch.value else 0
         )
-
         if self.number_switch.value and numbers_required == 0:
             numbers_required = 1
 
         symbols_required = (
             int(self.min_symbols_slider.value or 0) if self.symbol_switch.value else 0
         )
-
         if self.symbol_switch.value and symbols_required == 0:
             symbols_required = 1
 
@@ -218,7 +365,6 @@ class SecurityView:
 
         if total_minimum > current_length:
             self.length_slider.value = total_minimum
-
             self.length_value_text.value = str(total_minimum)
 
     def generate_password_ui(self, e=None) -> None:
@@ -231,25 +377,26 @@ class SecurityView:
                 self.lowercase_switch.value,
                 self.number_switch.value,
                 self.symbol_switch.value,
-                int(self.min_numbers_slider.value or 20),
-                int(self.min_symbols_slider.value or 20),
+                int(self.min_numbers_slider.value or 0),
+                int(self.min_symbols_slider.value or 0),
             )
 
             self.current_password.value = pwd
 
-            strength = check_strength(pwd)
-            self.update_strength_ui(strength)
+
+            self.analysis = analyze_password(pwd)
+
+            self.update_analysis_ui()
+            self.update_strength_ui()
 
             breaches = is_pwned(pwd)
 
             if breaches == -1:
                 self.breach_text.value = "Breach API unavailable."
                 self.breach_text.color = self.colors.warn
-
             elif breaches > 0:
                 self.breach_text.value = f"Found in {breaches} breaches."
                 self.breach_text.color = self.colors.error
-
             else:
                 self.breach_text.value = "No known breaches detected."
                 self.breach_text.color = self.colors.primary
@@ -261,7 +408,6 @@ class SecurityView:
 
         except ValueError as ex:
             self.set_status(str(ex), self.colors.error)
-
             self.current_password.value = ""
             self.strength_badge.value = ""
             self.breach_text.value = ""
@@ -274,11 +420,46 @@ class SecurityView:
                 "Generate a password first.",
                 self.colors.warn,
             )
-
             self.page.update()
             return
 
         await self.copy_text(self.current_password.value)
+
+    def _build_analysis_card(
+        self, title: str, icon: str, icon_color: str, controls: list[ft.Control]
+    ) -> ft.Container:
+        return ft.Container(
+            col={"xs": 12, "md": 6, "xl": 4},
+            height=220,
+            bgcolor=self.colors.surface_high,
+            border_radius=24,
+            border=ft.Border.all(1, self.colors.surface_highest),
+            padding=24,
+            content=ft.Column(
+                spacing=16,
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                controls=[
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        controls=[
+                            ft.Text(
+                                title,
+                                size=14,
+                                color=self.colors.text,
+                                weight=ft.FontWeight.W_500,
+                            ),
+                            ft.Icon(icon, color=icon_color, size=20),
+                        ],
+                    ),
+                    ft.Column(
+                        spacing=12,
+                        expand=True,
+                        alignment=ft.MainAxisAlignment.START,
+                        controls=controls,
+                    ),
+                ],
+            ),
+        )
 
     def build(self) -> ft.Container:
         hero_card = ft.Container(
@@ -343,6 +524,7 @@ class SecurityView:
                             ],
                         ),
                     ),
+                    self.strength_meter,
                     self.breach_text,
                 ],
             ),
@@ -353,7 +535,7 @@ class SecurityView:
             bgcolor=self.colors.surface,
             border_radius=20,
             border=ft.Border.all(1, self.colors.outline),
-            padding=20,
+            padding=24,
             content=ft.Column(
                 spacing=16,
                 controls=[
@@ -431,7 +613,7 @@ class SecurityView:
             bgcolor=self.colors.surface,
             border_radius=20,
             border=ft.Border.all(1, self.colors.outline),
-            padding=20,
+            padding=24,
             content=ft.Column(
                 spacing=14,
                 controls=[
@@ -467,13 +649,14 @@ class SecurityView:
                 ],
             ),
         )
+
         analysis_panel = ft.Container(
             bgcolor=self.colors.surface,
             border_radius=24,
             border=ft.Border.all(1, self.colors.outline),
-            padding=24,
+            padding=32,
             content=ft.Column(
-                spacing=20,
+                spacing=24,
                 controls=[
                     ft.Row(
                         spacing=10,
@@ -481,7 +664,7 @@ class SecurityView:
                             ft.Icon(
                                 ft.Icons.BAR_CHART,
                                 color=self.colors.primary,
-                                size=22,
+                                size=24,
                             ),
                             ft.Text(
                                 "Password Analysis",
@@ -491,335 +674,143 @@ class SecurityView:
                             ),
                         ],
                     ),
-                    ft.Divider(
-                        height=1,
-                        color=self.colors.surface_highest,
-                    ),
                     ft.ResponsiveRow(
-                        run_spacing=16,
-                        spacing=16,
+                        run_spacing=20,
+                        spacing=20,
                         controls=[
-                            # Overall Score
-                            ft.Container(
-                                col={"xs": 12, "md": 6, "xl": 4},
-                                bgcolor=self.colors.surface_high,
-                                border_radius=20,
-                                border=ft.Border.all(
-                                    1,
-                                    self.colors.surface_highest,
-                                ),
-                                padding=20,
-                                content=ft.Column(
-                                    spacing=14,
-                                    controls=[
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Overall Score",
-                                                    size=13,
-                                                    color=self.colors.muted,
-                                                ),
-                                                ft.Icon(
-                                                    ft.Icons.VERIFIED,
-                                                    color=self.colors.primary,
-                                                    size=18,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Row(
-                                            spacing=4,
-                                            vertical_alignment=ft.CrossAxisAlignment.END,
-                                            controls=[
-                                                ft.Text(
-                                                    "98",
-                                                    size=40,
-                                                    weight=ft.FontWeight.BOLD,
-                                                    color=self.colors.primary,
-                                                ),
-                                                ft.Text(
-                                                    "/100",
-                                                    color=self.colors.muted,
-                                                    size=14,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Text(
-                                            "Extremely Strong",
-                                            color=self.colors.primary,
-                                            weight=ft.FontWeight.BOLD,
-                                            size=14,
-                                        ),
-                                    ],
-                                ),
+
+                            self._build_analysis_card(
+                                "Overall Score",
+                                ft.Icons.VERIFIED,
+                                self.colors.primary,
+                                [
+                                    ft.Row(
+                                        spacing=8,
+                                        vertical_alignment=ft.CrossAxisAlignment.END,
+                                        controls=[
+                                            self.score_text,
+                                            ft.Text(
+                                                "/ 100",
+                                                color=self.colors.muted,
+                                                size=14,
+                                                weight=ft.FontWeight.W_500,
+                                            ),
+                                        ],
+                                    ),
+                                    self.score_label,
+                                ],
                             ),
-                            # Crack Time
-                            ft.Container(
-                                col={"xs": 12, "md": 6, "xl": 4},
-                                bgcolor=self.colors.surface_high,
-                                border_radius=20,
-                                border=ft.Border.all(
-                                    1,
-                                    self.colors.surface_highest,
-                                ),
-                                padding=20,
-                                content=ft.Column(
-                                    spacing=16,
-                                    controls=[
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Crack Time",
-                                                    size=13,
-                                                    color=self.colors.muted,
-                                                ),
-                                                ft.Icon(
-                                                    ft.Icons.TIMER,
-                                                    color=self.colors.secondary_container,
-                                                    size=18,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Brute Force",
-                                                    color=self.colors.muted,
-                                                    size=13,
-                                                ),
-                                                ft.Text(
-                                                    "3.5e+12 Years",
-                                                    color=self.colors.text,
-                                                    weight=ft.FontWeight.BOLD,
-                                                    size=13,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Dictionary",
-                                                    color=self.colors.muted,
-                                                    size=13,
-                                                ),
-                                                ft.Text(
-                                                    "Centuries",
-                                                    color=self.colors.text,
-                                                    weight=ft.FontWeight.BOLD,
-                                                    size=13,
-                                                ),
-                                            ],
-                                        ),
-                                    ],
-                                ),
+
+                            self._build_analysis_card(
+                                "Crack Time",
+                                ft.Icons.TIMER,
+                                self.colors.secondary_container,
+                                [
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Text(
+                                                "Brute Force",
+                                                color=self.colors.muted,
+                                                size=14,
+                                            ),
+                                            self.crack_time_bf,
+                                        ],
+                                    ),
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Text(
+                                                "Dictionary",
+                                                color=self.colors.muted,
+                                                size=14,
+                                            ),
+                                            self.crack_time_dict,
+                                        ],
+                                    ),
+                                ],
                             ),
-                            # Pattern Analysis
-                            ft.Container(
-                                col={"xs": 12, "md": 6, "xl": 4},
-                                bgcolor=self.colors.surface_high,
-                                border_radius=20,
-                                border=ft.Border.all(
-                                    1,
-                                    self.colors.surface_highest,
-                                ),
-                                padding=20,
-                                content=ft.Column(
-                                    spacing=14,
-                                    controls=[
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Pattern Analysis",
-                                                    size=13,
-                                                    color=self.colors.muted,
-                                                ),
-                                                ft.Icon(
-                                                    ft.Icons.AUTO_GRAPH,
-                                                    color=self.colors.secondary_container,
-                                                    size=18,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Row(
-                                            spacing=8,
-                                            controls=[
-                                                ft.Container(
-                                                    width=8,
-                                                    height=8,
-                                                    border_radius=999,
-                                                    bgcolor=self.colors.primary,
-                                                ),
-                                                ft.Text(
-                                                    "High Entropy",
-                                                    color=self.colors.text,
-                                                    weight=ft.FontWeight.BOLD,
-                                                    size=13,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Text(
-                                            "No sequential patterns or dates detected.",
-                                            color=self.colors.muted,
-                                            size=13,
-                                        ),
-                                    ],
-                                ),
+
+                            self._build_analysis_card(
+                                "Pattern Analysis",
+                                ft.Icons.AUTO_GRAPH,
+                                self.colors.secondary_container,
+                                [
+                                    ft.Row(
+                                        spacing=8,
+                                        controls=[
+                                            ft.Container(
+                                                width=8,
+                                                height=8,
+                                                border_radius=999,
+                                                bgcolor=self.colors.primary,
+                                            ),
+                                            self.pattern_text,
+                                        ],
+                                    ),
+                                    self.pattern_desc,
+                                ],
                             ),
-                            # Feedback
-                            ft.Container(
-                                col={"xs": 12, "md": 6, "xl": 4},
-                                bgcolor=self.colors.surface_high,
-                                border_radius=20,
-                                border=ft.Border.all(
-                                    1,
-                                    self.colors.surface_highest,
-                                ),
-                                padding=20,
-                                content=ft.Column(
-                                    spacing=12,
-                                    controls=[
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Feedback",
-                                                    size=13,
-                                                    color=self.colors.muted,
-                                                ),
-                                                ft.Icon(
-                                                    ft.Icons.INFO_OUTLINE,
-                                                    color=self.colors.primary,
-                                                    size=18,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Text(
-                                            "• Excellent character diversity.",
-                                            color=self.colors.text,
-                                            size=13,
-                                        ),
-                                        ft.Text(
-                                            "• Length provides massive key space.",
-                                            color=self.colors.text,
-                                            size=13,
-                                        ),
-                                    ],
-                                ),
+
+                            self._build_analysis_card(
+                                "Feedback",
+                                ft.Icons.INFO_OUTLINE,
+                                self.colors.primary,
+                                [self.feedback_text],
                             ),
-                            # Suggestions
-                            ft.Container(
-                                col={"xs": 12, "md": 6, "xl": 4},
-                                bgcolor=self.colors.surface_high,
-                                border_radius=20,
-                                border=ft.Border.all(
-                                    1,
-                                    self.colors.surface_highest,
-                                ),
-                                padding=20,
-                                content=ft.Column(
-                                    spacing=14,
-                                    controls=[
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Suggestions",
-                                                    size=13,
-                                                    color=self.colors.muted,
-                                                ),
-                                                ft.Icon(
-                                                    ft.Icons.LIGHTBULB_OUTLINE,
-                                                    color=self.colors.secondary_container,
-                                                    size=18,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Text(
-                                            "Password is near optimal. Consider using a password manager to store it safely.",
-                                            color=self.colors.text,
-                                            size=13,
-                                        ),
-                                    ],
-                                ),
+
+                            self._build_analysis_card(
+                                "Suggestions",
+                                ft.Icons.LIGHTBULB_OUTLINE,
+                                self.colors.secondary_container,
+                                [self.suggestions_text],
                             ),
-                            # Vulnerabilities
-                            ft.Container(
-                                col={"xs": 12, "md": 6, "xl": 4},
-                                bgcolor=self.colors.surface_high,
-                                border_radius=20,
-                                border=ft.Border.all(
-                                    1,
-                                    self.colors.surface_highest,
-                                ),
-                                padding=20,
-                                content=ft.Column(
-                                    spacing=14,
-                                    controls=[
-                                        ft.Row(
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                            controls=[
-                                                ft.Text(
-                                                    "Vulnerabilities",
-                                                    size=13,
-                                                    color=self.colors.muted,
-                                                ),
-                                                ft.Icon(
-                                                    ft.Icons.SHIELD_OUTLINED,
-                                                    color=self.colors.secondary_container,
-                                                    size=18,
-                                                ),
-                                            ],
-                                        ),
-                                        ft.Text(
-                                            "No immediate structural weaknesses. Resistant to common rainbow table attacks.",
-                                            color=self.colors.text,
-                                            size=13,
-                                        ),
-                                    ],
-                                ),
+
+                            self._build_analysis_card(
+                                "Vulnerabilities",
+                                ft.Icons.SHIELD_OUTLINED,
+                                self.colors.secondary_container,
+                                [self.vulnerabilities_text],
                             ),
                         ],
                     ),
                 ],
             ),
         )
+
         return ft.Container(
             expand=True,
             content=ft.Column(
                 scroll=ft.ScrollMode.AUTO,
                 controls=[
                     ft.Container(
-                        padding=24,
+                        padding=32,
                         content=ft.Column(
-                            spacing=16,
+                            spacing=24,
                             controls=[
                                 ft.Column(
-                                    spacing=6,
+                                    spacing=8,
                                     controls=[
                                         ft.Row(
-                                            spacing=8,
+                                            spacing=12,
                                             controls=[
                                                 ft.Icon(
-                                                    ft.Icons.PETS,
+                                                    ft.Icons.BUILD_CIRCLE,
                                                     color=self.colors.primary,
-                                                    size=28,
+                                                    size=36,
                                                 ),
                                                 ft.Text(
-                                                    "Pawsword Generator",
-                                                    size=30,
+                                                    "Password Forge",
+                                                    size=32,
                                                     weight=ft.FontWeight.BOLD,
                                                     color=self.colors.text,
                                                 ),
                                             ],
                                         ),
                                         ft.Text(
-                                            "Generate secure passwords and keep intruders paws-off.",
+                                            "Craft exceptionally strong, mathematically secure keys for your digital safe. Adjust the complexity below to fit your needs.",
                                             color=self.colors.muted,
-                                            size=13,
+                                            size=16,
                                         ),
                                     ],
                                 ),
@@ -828,9 +819,9 @@ class SecurityView:
                                     controls=[
                                         parameters_panel,
                                         ingredients_panel,
-                                        analysis_panel,
                                     ]
                                 ),
+                                analysis_panel,
                                 self.status_text,
                             ],
                         ),

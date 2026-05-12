@@ -1,22 +1,17 @@
-import re
+from zxcvbn import zxcvbn
 
 
-def check_strength(password:str)->str:
-    length = len(password)
+def analyze_password(password: str) -> dict:
 
-    types_count = 0
-    if re.search(r"[A-Z]", password):
-        types_count += 1
-    if re.search(r"[a-z]", password):
-        types_count += 1
-    if re.search(r"[0-9]", password):
-        types_count += 1
-    if re.search(r"[^A-Za-z0-9]", password):
-        types_count += 1
+    result = zxcvbn(password)
 
-    if length < 8 or types_count <= 1:
-        return "Weak"
-    elif length >= 12 and types_count >= 3:
-        return "Strong"
-    else:
-        return "Medium"
+    score = result["score"]
+
+
+    return {
+        "score": score,
+        "guesses": result["guesses"],
+        "feedback": result["feedback"],
+        "crack_times": result["crack_times_display"],
+        "sequence": result["sequence"],
+    }

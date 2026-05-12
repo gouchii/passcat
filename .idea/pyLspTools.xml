@@ -13,17 +13,4 @@
       </map>
     </option>
   </component>
-  <component name="TyModuleSettingsStorage">
-    <option name="moduleSettings">
-      <map>
-        <entry key="passcat">
-          <value>
-            <TyModuleSettingsData>
-              <option name="enabled" value="true" />
-            </TyModuleSettingsData>
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
 </project>
