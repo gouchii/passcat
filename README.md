@@ -1,69 +1,80 @@
-# Passcat app
 
-## Run the app
+# PassCat
 
-### uv
+PassCat is a minimalist password generator and analysis tool built with Flet and Python.
 
-Run as a desktop app:
+It focuses on:
+- secure password generation
+- configurable password constraints
+- real-time strength analysis using zxcvbn
+- breach detection using Have I Been Pwned
+- responsive desktop and web UI
+
+## Features
+
+- Adjustable password length
+- Minimum number and symbol requirements
+- Uppercase, lowercase, number, and symbol toggles
+- Real-time password strength scoring
+- Crack time estimation
+- Pattern and vulnerability analysis
+- Breach detection
+- Desktop and web support
+
+## Tech Stack
+
+- Python
+- Flet
+- zxcvbn
+- Have I Been Pwned API
+
+## Run Locally
+
+Using uv:
 
 ```bash
+uv sync
 uv run flet run
-```
+````
 
-Run as a web app:
+Run in browser:
 
 ```bash
 uv run flet run --web
 ```
 
-For more details on running the app, refer to the [Getting Started Guide](https://flet.dev/docs/).
+## Build Web Version
 
-## Build the app
-
-### Android
+Local web build:
 
 ```bash
-flet build apk -v
+flet build web --output docs
 ```
 
-For more details on building and signing `.apk` or `.aab`, refer to the [Android Packaging Guide](https://flet.dev/docs/publish/android/).
-
-### iOS
+Serve locally:
 
 ```bash
-flet build ipa -v
+uv run flet serve docs
 ```
 
-For more details on building and signing `.ipa`, refer to the [iOS Packaging Guide](https://flet.dev/docs/publish/ios/).
 
-### macOS
 
-```bash
-flet build macos -v
+## Project Structure
+
+```text
+src/
+├── components/
+├── core/
+├── views/
+├── generator.py
+├── validator.py
+├── breach_checker.py
+└── main.py
 ```
 
-For more details on building macOS package, refer to the [macOS Packaging Guide](https://flet.dev/docs/publish/macos/).
+## License
 
-### Linux
+MIT
 
-```bash
-flet build linux -v
-```
 
-For more details on building Linux package, refer to the [Linux Packaging Guide](https://flet.dev/docs/publish/linux/).
 
-### Windows
-
-```bash
-flet build windows -v
-```
-
-For more details on building Windows package, refer to the [Windows Packaging Guide](https://flet.dev/docs/publish/windows/).
-
-### Web
-
-```bash
-flet build web -v
-```
-
-For more details on building Web app, refer to the [Web Packaging Guide](https://flet.dev/docs/publish/web/).
