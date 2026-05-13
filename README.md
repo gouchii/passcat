@@ -1,25 +1,28 @@
-
+````md
 # PassCat
 
-PassCat is a minimalist password generator and analysis tool built with Flet and Python.
+PassCat is a minimalist password generator and security analysis tool built with Python and Flet.
 
-It focuses on:
-- secure password generation
-- configurable password constraints
-- real-time strength analysis using zxcvbn
-- breach detection using Have I Been Pwned
-- responsive desktop and web UI
+It focuses on generating strong passwords while providing real-time feedback on:
+- strength
+- crack resistance
+- structural weaknesses
+- breach exposure
+- password patterns
+
+Live Demo: https://passcat.onrender.com/
 
 ## Features
 
+- Secure password generation
 - Adjustable password length
 - Minimum number and symbol requirements
 - Uppercase, lowercase, number, and symbol toggles
-- Real-time password strength scoring
+- Real-time password strength analysis using zxcvbn
 - Crack time estimation
-- Pattern and vulnerability analysis
-- Breach detection
-- Desktop and web support
+- Pattern and vulnerability detection
+- Breach checking with Have I Been Pwned
+- Responsive desktop and web interface
 
 ## Tech Stack
 
@@ -27,37 +30,37 @@ It focuses on:
 - Flet
 - zxcvbn
 - Have I Been Pwned API
+- uv
 
 ## Run Locally
 
-Using uv:
+Install dependencies:
 
 ```bash
 uv sync
-uv run flet run
 ````
 
-Run in browser:
+Run desktop app:
 
 ```bash
-uv run flet run --web
+uv run flet run src/main.py
 ```
 
-## Build Web Version
-
-Local web build:
+Run web version locally:
 
 ```bash
-flet build web --output docs
+uv run flet run --web src/main.py
 ```
 
-Serve locally:
+## Deployment
+
+PassCat is deployed using Render.
+
+Start command:
 
 ```bash
-uv run flet serve docs
+uv run flet run src/main.py --web --port $PORT
 ```
-
-
 
 ## Project Structure
 
@@ -76,5 +79,5 @@ src/
 
 MIT
 
-
-
+```
+```
