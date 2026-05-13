@@ -15,6 +15,7 @@ class SecurityView:
         self.colors = colors
         self.clipboard = ft.Clipboard()
         self.analysis = None
+        self.is_at_bottom = False
         self.status_text = ft.Text(
             value="",
             color=colors.muted,
@@ -48,7 +49,7 @@ class SecurityView:
         )
 
         self.length_value_text = ft.Text(
-            "12",
+            "0",
             size=18,
             color=colors.primary,
             weight=ft.FontWeight.BOLD,
@@ -71,7 +72,7 @@ class SecurityView:
             min=0,
             max=64,
             divisions=56,
-            value=12,
+            value=3,
             active_color=colors.primary,
             inactive_color=colors.surface_highest,
         )
@@ -172,6 +173,14 @@ class SecurityView:
             overflow=ft.TextOverflow.ELLIPSIS,
         )
 
+
+        self.scroll_button = ft.FloatingActionButton(
+            icon=ft.Icons.ARROW_DOWNWARD,
+            bgcolor=colors.primary,
+            on_click=self.toggle_scroll,
+            tooltip="Scroll to Analysis",
+        )
+
         self.min_numbers_slider.on_change = self.sync_numbers
         self.min_symbols_slider.on_change = self.sync_symbols
 
@@ -179,6 +188,37 @@ class SecurityView:
         self.symbol_switch.on_change = self.sync_symbol_toggle
 
         self.length_slider.on_change = self.sync_length
+
+
+    def handle_scroll(self, e: ft.OnScrollEvent) -> None:
+        if e.max_scroll_extent <= 0:
+            if self.scroll_button.visible:
+                self.scroll_button.visible = False
+                self.scroll_button.update()
+            return
+
+        if not self.scroll_button.visible:
+            self.scroll_button.visible = True
+
+        at_bottom = e.pixels >= (e.max_scroll_extent - 50)
+
+        if at_bottom != self.is_at_bottom:
+            self.is_at_bottom = at_bottom
+            if self.is_at_bottom:
+                self.scroll_button.icon = ft.Icons.ARROW_UPWARD
+                self.scroll_button.tooltip = "Scroll to Top"
+            else:
+                self.scroll_button.icon = ft.Icons.ARROW_DOWNWARD
+                self.scroll_button.tooltip = "Scroll to Analysis"
+            self.scroll_button.update()
+
+    async def toggle_scroll(self, e) -> None:
+        """Fires when the scroll button is clicked. Uses universally supported offset parameter."""
+        if self.is_at_bottom:
+            await self.scroll_column.scroll_to(offset=0, duration=300)
+        else:
+
+            await self.scroll_column.scroll_to(offset=99999, duration=300)
 
     def sync_numbers(self, e=None) -> None:
         value = int(self.min_numbers_slider.value or 0)
@@ -524,10 +564,7 @@ class SecurityView:
                             ft.Container(
                                 bgcolor=self.colors.surface_high,
                                 border_radius=999,
-                                padding=ft.Padding.symmetric(
-                                    vertical=6,
-                                    horizontal=12,
-                                ),
+                                padding=ft.Padding(left=12, top=6, right=12, bottom=6),
                                 content=self.strength_badge,
                             ),
                         ],
@@ -598,10 +635,7 @@ class SecurityView:
                             ft.Container(
                                 bgcolor=self.colors.surface_high,
                                 border_radius=14,
-                                padding=ft.Padding.symmetric(
-                                    vertical=8,
-                                    horizontal=12,
-                                ),
+                                padding=ft.Padding(left=12, top=8, right=12, bottom=8),
                                 content=self.length_value_text,
                             ),
                         ],
@@ -618,10 +652,7 @@ class SecurityView:
                             ft.Container(
                                 bgcolor=self.colors.surface_high,
                                 border_radius=14,
-                                padding=ft.Padding.symmetric(
-                                    vertical=8,
-                                    horizontal=12,
-                                ),
+                                padding=ft.Padding(left=12, top=8, right=12, bottom=8),
                                 content=self.min_numbers_value_text,
                             ),
                         ],
@@ -638,10 +669,7 @@ class SecurityView:
                             ft.Container(
                                 bgcolor=self.colors.surface_high,
                                 border_radius=14,
-                                padding=ft.Padding.symmetric(
-                                    vertical=8,
-                                    horizontal=12,
-                                ),
+                                padding=ft.Padding(left=12, top=8, right=12, bottom=8),
                                 content=self.min_symbols_value_text,
                             ),
                         ],
@@ -694,6 +722,7 @@ class SecurityView:
         )
 
         analysis_panel = ft.Container(
+            key="analysis_panel",
             bgcolor=self.colors.surface,
             border_radius=24,
             border=ft.Border.all(1, self.colors.outline),
@@ -732,7 +761,9 @@ class SecurityView:
                                         controls=[
                                             self.score_text,
                                             ft.Container(
-                                                padding=ft.Padding.only(bottom=8),
+                                                padding=ft.Padding(
+                                                    left=0, top=0, right=0, bottom=8
+                                                ),
                                                 content=ft.Text(
                                                     "/ 100",
                                                     color=self.colors.muted,
@@ -818,28 +849,46 @@ class SecurityView:
             ),
         )
 
+        self.scroll_column = ft.Column(
+            scroll=ft.ScrollMode.AUTO,
+            on_scroll=self.handle_scroll,
+            expand=True,
+            controls=[
+                ft.Container(
+                    padding=32,
+                    content=ft.Column(
+                        spacing=24,
+                        controls=[
+                            hero_card,
+                            ft.ResponsiveRow(
+                                controls=[
+                                    parameters_panel,
+                                    ingredients_panel,
+                                ]
+                            ),
+                            analysis_panel,
+                            self.status_text,
+                        ],
+                    ),
+                )
+            ],
+        )
+
         return ft.Container(
             expand=True,
-            content=ft.Column(
-                scroll=ft.ScrollMode.AUTO,
+            content=ft.Stack(
+                expand=True,
                 controls=[
                     ft.Container(
-                        padding=32,
-                        content=ft.Column(
-                            spacing=24,
-                            controls=[
-                                hero_card,
-                                ft.ResponsiveRow(
-                                    controls=[
-                                        parameters_panel,
-                                        ingredients_panel,
-                                    ]
-                                ),
-                                analysis_panel,
-                                self.status_text,
-                            ],
-                        ),
-                    )
+                        left=0, right=0, top=0, bottom=0, content=self.scroll_column
+                    ),
+                    ft.Container(
+                        bottom=32,
+                        left=0,
+                        right=0,
+                        alignment=ft.Alignment(0, 0),
+                        content=self.scroll_button,
+                    ),
                 ],
             ),
         )

@@ -9,8 +9,7 @@ async def main(page: ft.Page):
     theme = apply_theme(page, "forest")
 
     page.title = "PassCat"
-    page.window.width = 1400
-    page.window.height = 900
+    page.window.maximized = True
 
     security_view = SecurityView(
         page,
