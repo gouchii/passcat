@@ -1,4 +1,4 @@
-````md
+
 # PassCat
 
 PassCat is a minimalist password generator and security analysis tool built with Python and Flet.
@@ -79,5 +79,3 @@ src/
 
 MIT
 
-```
-```
